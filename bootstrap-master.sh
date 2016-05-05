@@ -32,6 +32,7 @@ add_root_facilities() {
   # EDITOR=vim
   git config --global alias.st status
   git config --global alias.ci commit
+  # .ssh/config
 }
 
 
