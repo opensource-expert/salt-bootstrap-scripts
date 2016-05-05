@@ -1,9 +1,30 @@
 #!/bin/bash
+#
+# for managed server, bootstrap our node
+# Usage:
+#  bootstrap-node.sh nodename
+#
+# Usage on the node:
+#  bootstrap-node.sh -n nodename
+# Usage in debug mode (on the node):
+#  . bootstrap-node.sh
+#  apt_bootstrap
+#  change_hostname nodename
+#  admin_ssh_config
+#  …
+#
+# How it's desined:
+#  the same script is a wrapper to be executed on the master with argument
+#  which will be copied to the node (minion) and re-executed locally with
+#  the good argument.
+#
 
 # add additional package
 packages="vim git etckeeper locate"
 # joe editor par défaut ??
 packages_remove="joe"
+
+saltmaster="saltmaster.webannecy.com"
 
 apt_bootstrap() {
   apt-get update
@@ -11,13 +32,12 @@ apt_bootstrap() {
   apt-get remove -y --purge $packages_remove
 }
 
-
 admin_ssh_config() {
   mkdir -p ~/.ssh
-  cat << FIN > .ssh/config
+  cat << EOT > .ssh/config
 ForwardAgent yes
 HashKnownHosts no
-FIN
+EOT
 }
 
 restore_old_hostname() {
@@ -56,13 +76,21 @@ change_hostname() {
     return
   fi
 
+  local nodename="$1"
+
+  if [[ "$(hostname -f)" == "$nodename" ]]
+  then
+    echo "already ok, skipped"
+    return
+  fi
+
   # backup hostname
   echo backup
   cp /etc/hostname /root/hostname.old
   cp /etc/hosts /root/hosts.old
 
   # set hostname
-  echo "$1" > /etc/hostname
+  echo "$nodename" > /etc/hostname
   # set it
   hostname -F  /etc/hostname
   # remove old name from /etc/hosts
@@ -79,3 +107,37 @@ change_hostname() {
   show_hostname_file
 }
 
+node_init() {
+  local nodename="$1"
+  echo "node_init: $nodename"
+  echo "I'm $(hostname -f)"
+  apt_bootstrap
+  change_hostname "$nodename"
+}
+
+main() {
+  local nodename="$1"
+
+  if [[ "$1" == '-n' ]]
+  then
+    nodename="$2"
+    node_init "$nodename"
+  else
+    # one-liner upload and execute the script on the node
+    cat "$0" | ssh -A -o StrictHostKeyChecking=no -q "$nodename" \
+      "t=/tmp/boot;cat> \$t && bash \$t -n '$nodename'; rm \$t"
+    # send minion bootstrap
+    cat ~/salt-bootstrap/bootstrap-salt.sh | ssh "$nodename" \
+      "t=/tmp/boot2;cat> \$t &&
+      bash \$t -A $saltmaster stable
+      ; rm \$t"
+  fi
+}
+
+# sourcing code detection, if code is sourced for debug purpose, main is not executed.
+[[ $0 != "$BASH_SOURCE" ]] && sourced=1 || sourced=0
+if  [[ $sourced -eq 0 ]]
+then
+    # pass positional argument as is
+    main "$@"
+fi
