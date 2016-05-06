@@ -129,8 +129,8 @@ main() {
     # send minion bootstrap
     cat ~/salt-bootstrap/bootstrap-salt.sh | ssh "$nodename" \
       "t=/tmp/boot2;cat> \$t &&
-      bash \$t -A $saltmaster stable
-      ; rm \$t"
+      bash \$t -A $saltmaster stable ; \\
+      rm \$t"
   fi
 }
 

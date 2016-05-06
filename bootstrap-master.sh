@@ -7,7 +7,7 @@
 mkdir -p /srv/salt/
 
 # add additional package
-packages="vim git etckeeper locate"
+packages="vim git etckeeper locate dnsutils"
 # joe editor par défaut ??
 packages_remove="joe"
 
@@ -42,3 +42,7 @@ clone_sls_files() {
   git clone sls.git
 }
 
+update_etc_hosts() {
+# 92.222.76.181	saltmastrer.webannecy.com saltmastrer
+for h in dns0 web0 db0 mta0; do fqdn=$h.webannecy.com; echo "$(dig +short $fqdn) $fqdn $h"; done >> /etc/hosts
+}
