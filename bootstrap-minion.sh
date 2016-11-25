@@ -4,6 +4,10 @@
 # Usage:
 #  bootstrap-node.sh hostname.fqdn
 #
+# Note to boostrap your master do instead:
+#  cd /root/salt-bootstrap/
+#  ./bootstrap-salt.sh -U -M -A $saltmaster
+#
 # Usage on the node:
 #  bootstrap-node.sh -n hostname.fqdn
 #
@@ -27,6 +31,28 @@ packages_remove="joe"
 
 # SET YOUR MASTER HOST NAME HERE !
 saltmaster="saltmaster.domain.com"
+bootstrap_script=/root/salt-bootstrap/bootstrap-salt.sh
+
+## override with your own config
+[[ $0 != "$BASH_SOURCE" ]] && sourced=1 || sourced=0
+if [[ $sourced -eq 0  ]] ; then 
+  scriptdir=$(dirname $(readlink -f "$0"))
+else
+  scriptdir=$(dirname $(readlink -f "$BASH_SOURCE"))
+fi
+conffile="$scriptdir/bootstrap.conf"
+
+loadconf() {
+    local conffile="$1"
+    echo "testing $conffile"
+    if [[ -e "$conffile" ]]
+    then
+        echo "$conffile loaded"
+        source "$conffile"
+        return 0
+    fi
+    return 0
+}
 
 apt_bootstrap() {
   apt-get update
@@ -123,14 +149,24 @@ main() {
 
   if [[ "$1" == '-n' ]]
   then
+    # on the minion itself
     minion="$2"
     node_init "$minion"
   else
+    # on the master
+    if [[ ! -e "$bootstrap_script" ]]
+    then
+      echo "bootstrap_script missing"
+      echo "cd ; git clone https://github.com/saltstack/salt-bootstrap.git"
+      exit 1
+    fi
     # one-liner upload and execute the script on the node
     cat "$0" | ssh -A -o StrictHostKeyChecking=no -q "$minion" \
       "t=/tmp/boot;cat> \$t && bash \$t -n '$minion'; rm \$t"
+
     # send minion bootstrap
-    cat ~/salt-bootstrap/bootstrap-salt.sh | ssh "$minion" \
+    loadconf $conffile
+    cat $bootstrap_script | sed -e "s/^saltmaster=.*/saltmaster=$saltmaster/"| ssh "$minion" \
       "t=/tmp/boot2;cat> \$t &&
       bash \$t -A $saltmaster stable ; \\
       rm \$t"

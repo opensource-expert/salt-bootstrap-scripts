@@ -1,0 +1,4 @@
+#!/bin/bash
+apt purge salt-minion
+apt-get autoremove
+rm -rf  /etc/salt/

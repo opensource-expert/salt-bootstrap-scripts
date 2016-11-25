@@ -2,7 +2,8 @@
 #
 # bootstrap-master.sh
 #
-# Usage: ./bootstrap-master.sh
+# Usage: source bootstrap-master.sh
+# exec function you need
 
 # edit /etc/salt/master
 # file_roots
@@ -11,33 +12,32 @@
 mkdir -p /srv/salt/
 
 # add additional package
-packages="vim git etckeeper locate dnsutils"
+packages="vim git etckeeper locate dnsutils salt-master"
 # joe editor par défaut ??
 packages_remove="joe"
 mydomain=yourdomain.com
 
-# edit minion
-# def master
+# load functions
+source $scriptdir/bootstrap-minion.sh
 
-change_hostname() {
-
-  # change hostname
-  # change hosts
-  # change /etc/salt/minion_id == hostname
-
-  # apply
-  invoke-rc.d hostname.sh start
-  invoke-rc.d networking force-reload
-}
-
+loadconf
 
 add_root_facilities() {
   # .alias
+  touch ~/.alias
   # .bashrc
   # EDITOR=vim
+  cat << 'EOF' >> ~/.bashrc
+. ~/.alias
+export EDITOR=vim
+PATH=$HOME/bin:$PATH
+HISTFILESIZE=5000
+HISTSIZE=50000
+EOF
+  # .ssh/config done in bootstrap-minion.sh
+
   git config --global alias.st status
   git config --global alias.ci commit
-  # .ssh/config
 }
 
 
@@ -56,4 +56,6 @@ update_etc_hosts() {
     fqdn=$h.$mydomain
     echo "$(dig +short $fqdn) $fqdn $h"
   done >> /etc/hosts
+
 }
+
