@@ -2,14 +2,15 @@
 #
 # for managed server, bootstrap our node
 # Usage:
-#  bootstrap-node.sh nodename
+#  bootstrap-node.sh hostname.fqdn
 #
 # Usage on the node:
-#  bootstrap-node.sh -n nodename
+#  bootstrap-node.sh -n hostname.fqdn
+#
 # Usage in debug mode (on the node):
 #  . bootstrap-node.sh
 #  apt_bootstrap
-#  change_hostname nodename
+#  change_hostname hostname.fqdn
 #  admin_ssh_config
 #  …
 #
@@ -24,7 +25,8 @@ packages="vim git etckeeper locate"
 # joe editor par défaut ??
 packages_remove="joe"
 
-saltmaster="saltmaster.webannecy.com"
+# SET YOUR MASTER HOST NAME HERE !
+saltmaster="saltmaster.domain.com"
 
 apt_bootstrap() {
   apt-get update
@@ -76,9 +78,9 @@ change_hostname() {
     return
   fi
 
-  local nodename="$1"
+  local minion="$1"
 
-  if [[ "$(hostname -f)" == "$nodename" ]]
+  if [[ "$(hostname -f)" == "$minion" ]]
   then
     echo "already ok, skipped"
     return
@@ -90,7 +92,7 @@ change_hostname() {
   cp /etc/hosts /root/hosts.old
 
   # set hostname
-  echo "$nodename" > /etc/hostname
+  echo "$minion" > /etc/hostname
   # set it
   hostname -F  /etc/hostname
   # remove old name from /etc/hosts
@@ -108,26 +110,27 @@ change_hostname() {
 }
 
 node_init() {
-  local nodename="$1"
-  echo "node_init: $nodename"
+  local minion="$1"
+  echo "node_init: $minion"
   echo "I'm $(hostname -f)"
   apt_bootstrap
-  change_hostname "$nodename"
+  change_hostname "$minion"
 }
 
 main() {
-  local nodename="$1"
+  # minion is a valid dns name to reach the host via ssh
+  local minion="$1"
 
   if [[ "$1" == '-n' ]]
   then
-    nodename="$2"
-    node_init "$nodename"
+    minion="$2"
+    node_init "$minion"
   else
     # one-liner upload and execute the script on the node
-    cat "$0" | ssh -A -o StrictHostKeyChecking=no -q "$nodename" \
-      "t=/tmp/boot;cat> \$t && bash \$t -n '$nodename'; rm \$t"
+    cat "$0" | ssh -A -o StrictHostKeyChecking=no -q "$minion" \
+      "t=/tmp/boot;cat> \$t && bash \$t -n '$minion'; rm \$t"
     # send minion bootstrap
-    cat ~/salt-bootstrap/bootstrap-salt.sh | ssh "$nodename" \
+    cat ~/salt-bootstrap/bootstrap-salt.sh | ssh "$minion" \
       "t=/tmp/boot2;cat> \$t &&
       bash \$t -A $saltmaster stable ; \\
       rm \$t"

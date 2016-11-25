@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# bootstrap-master.sh
+#
+# Usage: ./bootstrap-master.sh
 
 # edit /etc/salt/master
 # file_roots
@@ -10,6 +14,7 @@ mkdir -p /srv/salt/
 packages="vim git etckeeper locate dnsutils"
 # joe editor par défaut ??
 packages_remove="joe"
+mydomain=yourdomain.com
 
 # edit minion
 # def master
@@ -43,6 +48,12 @@ clone_sls_files() {
 }
 
 update_etc_hosts() {
-# 92.222.76.181	saltmastrer.webannecy.com saltmastrer
-for h in dns0 web0 db0 mta0; do fqdn=$h.webannecy.com; echo "$(dig +short $fqdn) $fqdn $h"; done >> /etc/hosts
+  # records some remote server in /etc/hosts
+  # /etc/hosts format
+  # 10.0.0.1 saltmastrer.yourdomain.com saltmastrer
+  for h in dns0 web0 db0 mta0
+  do
+    fqdn=$h.$mydomain
+    echo "$(dig +short $fqdn) $fqdn $h"
+  done >> /etc/hosts
 }
